@@ -10,6 +10,7 @@ import (
 	"path"
 	"path/filepath"
 	"regexp"
+	"strconv"
 
 	"github.com/lovego/errs"
 )
@@ -74,6 +75,8 @@ func (b *Bucket) Download(db DB, resp http.ResponseWriter, file string, object s
 			return err
 		}
 	}
+	filename := filepath.Join(b.Dir, b.FilePath(file))
+	checkSetReadPerm(filename)
 	if err := b.writeHeader(db, resp, file); err != nil {
 		return err
 	}
@@ -82,7 +85,7 @@ func (b *Bucket) Download(db DB, resp http.ResponseWriter, file string, object s
 		return nil
 	}
 
-	f, err := os.Open(filepath.Join(b.Dir, b.FilePath(file)))
+	f, err := os.Open(filename)
 	if err != nil {
 		if os.IsNotExist(err) {
 			resp.WriteHeader(http.StatusNotFound)
@@ -128,4 +131,17 @@ var hashRegexp = regexp.MustCompile(`^[\w-]{43}$`)
 // IsHash returns if string s is in file hash format(43 urlsafe base64 characters).
 func IsHash(s string) bool {
 	return hashRegexp.MatchString(s)
+}
+
+// check file read perm
+// when no read perm, file can not read, nginx return 403
+func checkSetReadPerm(filename string) {
+	stat, err := os.Stat(filename)
+	if err != nil {
+		return
+	}
+	if strconv.FormatUint(uint64(stat.Mode()), 8) == "644" {
+		return
+	}
+	os.Chmod(filename, 0644)
 }
