@@ -2,6 +2,7 @@ package filestorage
 
 import (
 	"crypto/sha256"
+	"database/sql"
 	"encoding/base64"
 	"fmt"
 	"io"
@@ -9,6 +10,26 @@ import (
 	"strings"
 	"time"
 )
+
+func (b *Bucket) FileExists(db DB, hash string) (bool, error) {
+	if b.FilesTable == "" {
+		b.FilesTable = "files"
+	}
+	var existsHash string
+	err := b.getDB(db).QueryRow(fmt.Sprintf(`
+	SELECT hash
+	FROM %s
+	WHERE hash = %s
+	`, b.FilesTable, quote(hash),
+	)).Scan(&existsHash)
+	if err == sql.ErrNoRows {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return existsHash != "", nil
+}
 
 func (b *Bucket) createFilesTable(db DB) error {
 	if b.FilesTable == "" {

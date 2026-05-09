@@ -99,6 +99,10 @@ type File struct {
 	Size int64
 }
 
+func (f File) Hash() (string, error) {
+	return getContentHash(f.IO)
+}
+
 // Save save files into bucket.
 func (b *Bucket) Save(
 	db DB, fileCheck func(string, int64) error, object string, files ...File,
